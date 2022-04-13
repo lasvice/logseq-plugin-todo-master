@@ -82,10 +82,24 @@ async function getBlockMarkers(
   }
 
   const res: any[] = [];
-  function traverse(tree: any) {
+  async function traverse(tree: any) {
     if (tree.children) {
       for (const child of tree.children) {
-        traverse(child);
+        await traverse(child);
+      }
+    }
+
+    // for ref block
+    if (tree.content.includes("((") && tree.content.includes("))")) {
+      let blockContent = tree.content;
+      // Get content if it's q block reference
+      const rxGetId = /\(\(([^)]*)\)\)/;
+      const blockId = rxGetId.exec(blockContent);
+      if (blockId != null) {
+        const block = await logseq.Editor.getBlock(blockId[1], {
+          includeChildren: true,
+        });
+        await traverse(block)
       }
     }
 
@@ -93,7 +107,7 @@ async function getBlockMarkers(
       res.push(tree.marker.toLowerCase());
     }
   }
-  traverse(tree);
+  await traverse(tree);
   return {
     markers: res,
     mode: pageMode ? "page" : "block",
